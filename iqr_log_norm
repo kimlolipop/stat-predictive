@@ -1,0 +1,255 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "4112c21a-cb9e-41ff-87f4-db01db5a444c",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# μ = mean , σ = s, γ = gramma, m = mean\n",
+    "# calculate parameter --> https://stats.stackexchange.com/questions/411080/deriving-mu-and-sigma-from-the-log-normal-distribution-given-the-expected-mean-a\n",
+    "# calculate iqr --> https://stackoverflow.com/questions/67886115/calculation-of-the-first-and-third-quartile"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "f9926347-ec6a-4d12-afa1-5ea066bc8919",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import numpy as np"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 74,
+   "id": "b63aac5f-f95b-4882-988b-b8e6ff4a41d7",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([[<AxesSubplot:title={'center':'val'}>]], dtype=object)"
+      ]
+     },
+     "execution_count": 74,
+     "metadata": {},
+     "output_type": "execute_result"
+    },
+    {
+     "data": {
+      "image/png": "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\n",
+      "text/plain": [
+       "<Figure size 432x288 with 1 Axes>"
+      ]
+     },
+     "metadata": {
+      "needs_background": "light"
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "mu, sigma = 4, 1\n",
+    "x = np.random.lognormal(mu, sigma, 1000)\n",
+    "df = pd.DataFrame(x, columns = ['val'])\n",
+    "df.hist(bins = 100)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 75,
+   "id": "ea54ebc4-eecb-4263-99a1-3bf6fc3cec36",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "88.0682168223728 102.80174467410878\n"
+     ]
+    }
+   ],
+   "source": [
+    "m = np.mean(df['val'])\n",
+    "std = np.std(df['val'])\n",
+    "print(m, std)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 76,
+   "id": "a35a009c-35c8-4e40-9a44-c71eb0bc18ab",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "4.048234216046014 0.9272297334426198\n"
+     ]
+    }
+   ],
+   "source": [
+    "gramma = 1+std**2/m**2\n",
+    "μ = np.log(m/np.sqrt(gramma))\n",
+    "σ = np.sqrt(np.log(gramma))\n",
+    "\n",
+    "print(μ, σ)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 77,
+   "id": "590f09fc-5eac-482d-a024-cceda2a6a931",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "30.655965143376516\n",
+      "107.08695493014311\n"
+     ]
+    }
+   ],
+   "source": [
+    "import numpy as np\n",
+    "from scipy import special\n",
+    "\n",
+    "SQRT2 = 1.41421356237\n",
+    "\n",
+    "def LNquantile(μ, σ, p):\n",
+    "    \"\"\"\n",
+    "    Compute quantile function for log-normal distribution\n",
+    "    \"\"\"\n",
+    "    nq = SQRT2 * special.erfinv(2.0*p - 1.0) # N(0,1) normal quantile\n",
+    "    t = μ +  σ * nq # N(μ, σ) quantile\n",
+    "    return np.exp(t) # LN(μ, σ) quantile\n",
+    "\n",
+    "q25 = LNquantile(μ, σ, 0.25)\n",
+    "q75 = LNquantile(μ, σ, 0.75)\n",
+    "\n",
+    "print(q25)\n",
+    "print(q75)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 78,
+   "id": "c3c61cf0-8648-4855-a73c-6335ce40b6c6",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# x = np.random.normal(mu, sigma, 20000)\n",
+    "# np.mean(x)\n",
+    "# np.std(df['val'])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 79,
+   "id": "4b71dd7d-8fff-466f-afbf-b39b8174ec2e",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(2.0521128309486203, 730.4021780965471)"
+      ]
+     },
+     "execution_count": 79,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "min(x), max(x)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 80,
+   "id": "068d6c01-1e6b-4357-8a9c-c0d73b456cb1",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "critical: -83.99051953677336,221.73343961029298\n"
+     ]
+    }
+   ],
+   "source": [
+    "iqr = q75 - q25\n",
+    "lower_temp = q25 - (1.5*iqr)\n",
+    "upper_temp = q75 + (1.5*iqr)\n",
+    "print('critical: {0},{1}'.format(lower_temp, upper_temp))\n",
+    "# print('alert: {0},{1}'.format(q2,q98))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 81,
+   "id": "7a80d315-021e-431f-b5c4-5fd61934d759",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "critical: -91.74978283503157,223.18912270184626\n"
+     ]
+    }
+   ],
+   "source": [
+    "q25,q75 = df['val'].quantile([0.25,0.75])\n",
+    "iqr = q75 - q25\n",
+    "lower_temp = q25 - (1.5*iqr)\n",
+    "upper_temp = q75 + (1.5*iqr)\n",
+    "print('critical: {0},{1}'.format(lower_temp, upper_temp))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "1e78527b-aa2f-443b-a8fb-908222b9e9f9",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "1b5f40ed-b513-4581-bfc5-54de035f22c5",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.11"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
